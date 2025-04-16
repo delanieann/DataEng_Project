@@ -31,6 +31,5 @@ mkdir ~/code
 cd ~/code
 git clone https://github.com/delanieann/DataEng_Project ./dataeng_project
 
-
 mkdir -p ~/data/raw
 
