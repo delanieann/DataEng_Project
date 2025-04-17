@@ -29,11 +29,13 @@ pipx install pipenv
 
 echo "[6. SETUP]: Cloning project repository(ies)..."
 
-# Assumes ssh key created, added to ssh-agent, and added to github
+# Assumes ssh key created, added to ssh-agent, and added to github (only required if using ssh to clone private repo)
 
 mkdir ~/code
 cd ~/code
 # git clone https://github.com/delanieann/DataEng_Project ./dataeng_project
+
+# THIS SHOULD BE UPDATED TO REFLECT SHARED PROJECT REPO AND POTENTIALLY A SPECIFIC BRANCH
 git clone git@github.com:whitham-powell/pdx-edu-cs510-data-eng-project.git ./project_code
 
 echo "[7. SETUP]: pipenv installing dependencies..."
