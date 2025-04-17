@@ -4,16 +4,14 @@ from datetime import datetime, timedelta
 import threading
 import json
 
-timestamp_now = datetime.now()
-formatted_timestamp = timestamp_now.strftime('%Y-%m-%d_%H:%M:%S')
-
-timestamp = datetime.now() - timedelta(days=854)
+timestamp = datetime.now()
+formatted_timestamp = timestamp.strftime('%Y-%m-%d_%H:%M:%S')
 date = timestamp.strftime('%Y-%m-%d')
 
 project_id = "data-eng-456118"
 subscription_id = "bus_breadcrumb-sub"
 # Number of seconds the subscriber should listen for messages
-timeout = 300.0
+timeout = 600.0
 
 lock = threading.Lock()
 
@@ -30,7 +28,7 @@ def callback(message: pubsub_v1.subscriber.message.Message) -> None:
         message_data = message.data.decode("utf-8")
         if not message_data.strip().startswith("{"):
             with open("sub_err.txt", "a") as file:
-                write(f"{formatted_timestamp} skipping nmn-JSON message: {repr(message_data)}")
+                write(f"{formatted_timestamp} skipping non-JSON message: {repr(message_data)}")
             message.ack()
             return
         count += 1
@@ -51,7 +49,8 @@ with subscriber:
         streaming_pull_future.cancel()  # Trigger the shutdown.
         streaming_pull_future.result()  # Block until the shutdown is complete.
 
-with open("sub_log.txt", "a") as file:
-    file.write(f"{formatted_timestamp} Message count: {count}")
+if count > 0:
+    with open("sub_log.txt", "a") as file:
+        file.write(f"{formatted_timestamp} Message count: {count}\n")
 
 

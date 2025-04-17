@@ -2,7 +2,7 @@ import pandas as pd
 import requests, json, os
 from datetime import datetime, timedelta
 
-timestamp = datetime.now() - timedelta(days=854)
+timestamp = datetime.now()
 formatted_timestamp = timestamp.strftime('%Y-%m-%d_%H:%M:%S')
 date = timestamp.strftime('%Y-%m-%d')
 
@@ -21,4 +21,6 @@ for bus_id in bus["Whisker"]:
         file_path = os.path.join(date, f"{bus_id}_{formatted_timestamp}.json")
         with open(file_path, "a") as file:
             file.write(response.text)
-
+    else:
+        with open("bc_err.txt", "a") as file:
+            file.write(f"{formatted_timestamp} error {response.status_code} bus id {bus_id}")
