@@ -23,13 +23,24 @@ echo "Restart your shell or run 'source ~/.bashrc' to apply changes"
 
 echo "[4. SETUP]: pipx setup..."
 pipx ensurepath
+
 echo "[5. SETUP]: Installing pipenv via pipx..."
 pipx install pipenv
 
 echo "[6. SETUP]: Cloning project repository(ies)..."
+
+# Assumes ssh key created, added to ssh-agent, and added to github
+
 mkdir ~/code
 cd ~/code
-git clone https://github.com/delanieann/DataEng_Project ./dataeng_project
+# git clone https://github.com/delanieann/DataEng_Project ./dataeng_project
+git clone git@github.com:whitham-powell/pdx-edu-cs510-data-eng-project.git ./project_code
+
+echo "[7. SETUP]: pipenv installing dependencies..."
+
+cd ~/code/project_code
+pipenv install
+
 
 mkdir -p ~/data/raw
 
