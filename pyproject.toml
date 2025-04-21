@@ -1,0 +1,11 @@
+[project]
+name = "trimet-data-eng"
+version = "0.1.0"
+description = "A package for Trimet data engineering as part of CS510 Top: Data Engineering at Portland State University Spring 2025"
+readme="README.md"
+requires-python = ">=3.11, <3.13"
+dependencies = [
+    "google-cloud-pubsub>=2.29.0",
+    "pandas>=2.2.3",
+    "requests>=2.32.3",
+]
