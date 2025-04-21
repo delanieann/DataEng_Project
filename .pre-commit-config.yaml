@@ -1,0 +1,54 @@
+# Globals
+exclude: '^(.*/)?scratch\.py$'
+repos:
+  # Formatters
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        files: \.py$ # Target only Python files
+  - repo: https://github.com/pre-commit/mirrors-isort
+    rev: v5.10.1
+    hooks:
+      - id: isort
+        files: \.py$ # Target only Python files
+  - repo: https://github.com/google/yamlfmt
+    rev: v0.14.0
+    hooks:
+      - id: yamlfmt
+  # Linters
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.1.1
+    hooks:
+      - id: flake8
+        files: \.py$ # Target only Python files
+        # Linter for Python code style and quality checks
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.13.0
+  #   hooks:
+  #     - id: mypy
+  #       additional_dependencies:
+  #         - numpy
+  #       args: ["--config-file=setup.cfg"]
+  # # Security Tools
+  # - repo: https://github.com/PyCQA/bandit
+  #   rev: 1.8.0
+  #   hooks:
+  #     - id: bandit
+  #       name: Bandit Security Scanner
+  #       entry: bandit
+  #       args: ["-r", "src/"]
+  #       stages: [pre-push] # Run Bandit only on push
+  #       exclude: "./tests/.*" # Skip test files
+  # Miscellaneous
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+  - repo: https://github.com/asottile/add-trailing-comma
+    rev: v3.1.0
+    hooks:
+      - id: add-trailing-comma
+        files: \.py$ # Target only Python files
