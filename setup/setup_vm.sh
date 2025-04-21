@@ -15,14 +15,17 @@ CLONES_DIR="$HOME/clones"
 REPO_NAME=$(basename "${REPO_URL%.git}")
 REPO_DIR="$CLONES_DIR/$REPO_NAME"
 
-# This script sets up a VM for the Trimet Bus Data Engineering project using uv
-echo "[1] Updating and installing packages from apt-packages.txt"
-sudo apt-get update
-xargs -a ./apt-packages.txt sudo apt-get install -y 
 
-echo "[2] Installing uv using install script"
+echo "[VM Setup]"
+
+echo "[VM Setup] Updating package list and installing git"
+
+sudo apt-get update
+sudo apt-get install -y git
+
+echo "[VM Setup] Installing uv"
 if ! command -v uv >/dev/null 2>&1; then
-    echo "[2] Installing uv using install script"
+    echo "[*] Installing uv using install script"
     curl -LsSf https://astral.sh/uv/install.sh | sh
 
     if [ -f "$HOME/.local/bin/env" ]; then
@@ -31,11 +34,24 @@ if ! command -v uv >/dev/null 2>&1; then
         export PATH="$HOME/.local/bin:$PATH"
     fi
 else
-    echo "[2] uv is already installed"
+    echo "[*] uv is already installed"
 fi
 
+echo "[VM Setup] Cloning the repository"
 
-echo "[3] Cloning the repository"
+# Detect URL type (SSH or HTTPS)
+if [[ "$REPO_URL" =~ ^git@ ]]; then
+    echo "[*] Detected SSH repository"
+    HOST=$(echo "$REPO_URL" | cut -d@ -f2 | cut -d: -f1)
+    PATH_PART=$(echo "$REPO_URL" | cut -d: -f2)
+elif [[ "$REPO_URL" =~ ^https:// ]]; then
+    echo "[*] Detected HTTPS repository"
+    HOST=$(echo "$REPO_URL" | cut -d/ -f3)
+    PATH_PART=$(echo "$REPO_URL" | cut -d/ -f4-)
+else
+    echo "[!] Unknown URL format: $REPO_URL"
+    exit 1
+fi
 
 mkdir -p $CLONES_DIR
 
@@ -60,4 +76,20 @@ else
         exit 1
     }
 fi
+
+echo "[VM Setup] Creating workspace directory"
+mkdir -p $WORKSPACE_DIR
+
+cp -r $REPO_DIR $WORKSPACE_DIR
+
+echo "[VM Setup] Setting up virtual environment"
+cd $WORKSPACE_DIR
+
+if [ -d ".venv" ]; then
+    echo "Virtual environment already exists. Activating..."
+else
+    echo "Creating virtual environment..."
+    uv venv
+fi
+source .venv/bin/activate
 
