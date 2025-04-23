@@ -89,7 +89,7 @@ EXCLUDES=(
   --exclude='tests/'
   --exclude='.pre-commit-config.yaml'
   --exclude='.venv/'
-  --exclude='scripts/'
+  --exclude='scripts/setup/'
 )
 sudo rsync -a --delete "${EXCLUDES[@]}" "$REPO_DIR/" "$WORKSPACE_DIR/"
 
