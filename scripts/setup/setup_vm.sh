@@ -15,7 +15,6 @@ CLONES_DIR="$HOME/clones"
 REPO_NAME=$(basename "${REPO_URL%.git}")
 REPO_DIR="$CLONES_DIR/$REPO_NAME"
 
-
 echo "[VM Setup]"
 
 echo "[VM Setup] Updating package list and installing git and curl"
@@ -50,18 +49,8 @@ if [[ "$REPO_URL" =~ ^git@ ]]; then
     echo "[*] Adding available SSH keys"
     ssh-add -l >/dev/null 2>&1 || ssh-add
     
-    # HOST=$(echo "$REPO_URL" | cut -d@ -f2 | cut -d: -f1)
-    # PATH_PART=$(echo "$REPO_URL" | cut -d: -f2)
-    # if [ -f "$HOME/.ssh/id_rsa" ]; then
-    #     eval "$(ssh-agent -s)"
-    #     ssh-add "$HOME/.ssh/id_rsa"
-    # else
-    #     echo "[!] SSH key not found at ~/.ssh/id_rsa. Skipping ssh-add."
-    # fi
 elif [[ "$REPO_URL" =~ ^https:// ]]; then
     echo "[*] Detected HTTPS repository"
-    # HOST=$(echo "$REPO_URL" | cut -d/ -f3)
-    # PATH_PART=$(echo "$REPO_URL" | cut -d/ -f4-)
 else
     echo "[!] Unknown URL format: $REPO_URL"
     exit 1
