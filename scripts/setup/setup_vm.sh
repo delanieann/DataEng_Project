@@ -120,9 +120,18 @@ echo "$CURRENT_COMMIT" > "$WORKSPACE_DIR/COMMIT_HASH.txt"
 echo "[VM Setup] Current commit hash saved to $WORKSPACE_DIR/COMMIT_HASH.txt"
 
 echo "[VM Setup] Copying helper scripts to workspace"
-cp "$REPO_DIR/update_vm.sh" "$WORKSPACE_DIR/"
-cp "$REPO_DIR/check_workspace.sh" "$WORKSPACE_DIR/"
+cp "$REPO_DIR/scripts/update_vm.sh" "$WORKSPACE_DIR/"
+cp "$REPO_DIR/scripts/check_workspace.sh" "$WORKSPACE_DIR/"
 chmod +x "$WORKSPACE_DIR/update_vm.sh" "$WORKSPACE_DIR/check_workspace.sh"
+
+CONFIG_FILE="$WORKSPACE_DIR/.vm_workspace_config"
+echo "[VM Setup] Writing configuration to $CONFIG_FILE"
+cat <<EOF > "$CONFIG_FILE"
+REPO_URL=$REPO_URL
+BRANCH=$BRANCH
+WORKSPACE_DIR=$WORKSPACE_DIR
+EOF
+
 
 echo "Setup complete."
 echo "Workspace: $WORKSPACE_DIR"
