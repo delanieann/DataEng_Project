@@ -81,6 +81,7 @@ fi
 echo "[VM Setup] Creating workspace directory"
 sudo mkdir -p "$WORKSPACE_DIR"
 
+# -- Rsync repository contents to workspace --
 echo "[VM Setup] Copying repository contents to workspace"
 EXCLUDES=(
   --exclude='.git'
