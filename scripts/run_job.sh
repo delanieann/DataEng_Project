@@ -24,7 +24,12 @@ fi
 echo "[Run Job] Activating virtual environment..."
 source .venv/bin/activate
 
-# -- Run Python job --
+# -- Setup logging directory --
+
+LOG_DIR="$WORKSPACE_DIR/job_logs"
+mkdir -p "$LOG_DIR"
+
+# -- Prepare logfile path --
 
 if [ -z "$1" ]; then
     echo "[!] No Python job script specified."
@@ -34,18 +39,43 @@ fi
 
 PYTHON_JOB="$1"
 
-echo "[Run Job] Running Python job: $PYTHON_JOB"
-
-# Set up logging directory
-LOG_DIR="$WORKSPACE_DIR/job_logs"
-mkdir -p "$LOG_DIR"
-
-# Log filename based on script name and timestamp
 LOGFILE="$LOG_DIR/$(basename "$PYTHON_JOB" .py)_$(date +'%Y%m%d_%H%M%S').log"
 
-# Run Python job, capture stdout and stderr into log
-python "$PYTHON_JOB" > "$LOGFILE" 2>&1
+# -- Record environment info into logfile --
+
+ENV_HASH_FILE="$WORKSPACE_DIR/ENV_HASH.txt"
+COMMIT_HASH_FILE="$WORKSPACE_DIR/COMMIT_HASH.txt"
+NOW_UTC=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+{
+    echo "[Run Job] --- Environment Info ---"
+    echo "[Run Job] Timestamp (UTC): $NOW_UTC"
+    echo "[Run Job] Hostname: $(hostname)"
+    echo "[Run Job] Username: $(whoami)"
+    echo "[Run Job] Workspace Directory: $WORKSPACE_DIR"
+    echo "[Run Job] Python Version: $(python --version 2>&1)"
+    
+    if [ -f "$ENV_HASH_FILE" ]; then
+        echo "[Run Job] ENV_HASH: $(cat "$ENV_HASH_FILE")"
+    else
+        echo "[Run Job] ENV_HASH file not found."
+    fi
+
+    if [ -f "$COMMIT_HASH_FILE" ]; then
+        echo "[Run Job] COMMIT_HASH: $(cat "$COMMIT_HASH_FILE")"
+    else
+        echo "[Run Job] COMMIT_HASH file not found."
+    fi
+    echo "[Run Job] -------------------------"
+} >> "$LOGFILE"
+
+# -- Run Python job --
+
+echo "[Run Job] Running Python job: $PYTHON_JOB" >> "$LOGFILE"
+python "$PYTHON_JOB" >> "$LOGFILE" 2>&1
 PYTHON_EXIT_CODE=$?
+
+# -- Final reporting --
 
 if [ "$PYTHON_EXIT_CODE" -eq 0 ]; then
     echo "[Run Job] Job completed successfully. Log saved to: $LOGFILE"

@@ -84,16 +84,27 @@ sudo mkdir -p "$WORKSPACE_DIR"
 echo "[VM Setup] Copying repository contents to workspace"
 EXCLUDES=(
   --exclude='.git'
+  --exclude='.venv/'
   --exclude='.vscode/'
   --exclude='*.md'
   --exclude='tests/'
   --exclude='.pre-commit-config.yaml'
-  --exclude='.venv/'
   --exclude='scripts/setup/'
 )
 sudo rsync -a --delete "${EXCLUDES[@]}" "$REPO_DIR/" "$WORKSPACE_DIR/"
-
 sudo chown -R "$USER:$USER" "$WORKSPACE_DIR"
+
+# -- Copy helper scripts --
+echo "[VM Setup] Copying helper scripts to workspace"
+
+for helper_script in "$REPO_DIR/scripts/"*.sh; do
+    # Skip scripts inside scripts/setup/
+    if [[ "$helper_script" != "$REPO_DIR/scripts/setup/"* ]]; then
+        cp "$helper_script" "$WORKSPACE_DIR/"
+    fi
+done
+
+chmod +x "$WORKSPACE_DIR/"*.sh
 
 echo "[VM Setup] Setting up virtual environment"
 cd "$WORKSPACE_DIR"
@@ -109,7 +120,7 @@ uv sync --no-dev
 echo "[*] Activating virtual environment..."
 source .venv/bin/activate
 
-# Save environment fingerprint
+# -- Save environment fingerprint --
 echo "[VM Setup] Saving environment fingerprint"
 cat pyproject.toml uv.lock 2>/dev/null | sha256sum | cut -d' ' -f1 > ENV_HASH.txt
 
@@ -119,11 +130,7 @@ CURRENT_COMMIT=$(git rev-parse HEAD)
 echo "$CURRENT_COMMIT" > "$WORKSPACE_DIR/COMMIT_HASH.txt"
 echo "[VM Setup] Current commit hash saved to $WORKSPACE_DIR/COMMIT_HASH.txt"
 
-echo "[VM Setup] Copying helper scripts to workspace"
-cp "$REPO_DIR/scripts/update_vm.sh" "$WORKSPACE_DIR/"
-cp "$REPO_DIR/scripts/check_workspace.sh" "$WORKSPACE_DIR/"
-chmod +x "$WORKSPACE_DIR/update_vm.sh" "$WORKSPACE_DIR/check_workspace.sh"
-
+# -- Save configuration --
 CONFIG_FILE="$WORKSPACE_DIR/.vm_workspace_config"
 echo "[VM Setup] Writing configuration to $CONFIG_FILE"
 cat <<EOF > "$CONFIG_FILE"
@@ -142,7 +149,8 @@ sudo chmod 644 /etc/profile.d/trimet_pipeline_workspace.sh
 
 echo "[VM Setup] Global environment file created at /etc/profile.d/trimet_pipeline_workspace.sh"
 
-echo "Setup complete."
+# -- Print summary --
+echo "[VM Setup] Complete."
 echo "Workspace: $WORKSPACE_DIR"
 echo "Virtual environment: $WORKSPACE_DIR/.venv"
 echo "Current commit hash: $CURRENT_COMMIT"

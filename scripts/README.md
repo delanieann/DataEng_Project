@@ -77,13 +77,24 @@ scripts/
   ```
 - **Behavior:**
   - Activates the virtual environment
+  - Records environment metadata at the start of each log:
+    - UTC timestamp
+    - Hostname
+    - Username
+    - Workspace directory
+    - Python version
+    - ENV_HASH (environment fingerprint)
+    - COMMIT_HASH (Git commit version)
   - Runs the specified Python script
-  - Captures all stdout and stderr into a timestamped log under `job_logs/`
-- **Notes:**
-  - Exits with `0` on success, or the Python script's exit code on failure.
-  - Intended to be triggered manually or via cronjobs.
-  - When scheduling with cron, redirect run_job.sh output separately to capture Bash-level errors.
+  - Captures all Python stdout and stderr into a timestamped log under `job_logs/`
+  - Exits with `0` if the job succeeds, or the Python script's exit code if it fails.
 
+- **Notes:**
+  - Intended for manual use or scheduling with cronjobs.
+  - When scheduling with cron, redirect run_job.sh output separately to capture Bash-level errors, e.g.:
+    ```cron
+    0 3 * * * /path/to/scripts/run_job.sh scripts/publisher_job.py >> /path/to/workspace/job_logs/cron_run_job.log 2>&1
+    ```
 ---
 
 ## Notes

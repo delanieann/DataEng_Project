@@ -53,8 +53,8 @@ else
     exit 1
 fi
 
-echo "[Update] Syncing repo to workspace: $WORKSPACE_DIR"
-
+# -- Rsync repository contents to workspace --
+echo "[Update VM] Syncing repo to workspace: $WORKSPACE_DIR"
 EXCLUDES=(
   --exclude='.git'
   --exclude='.venv/'
@@ -62,15 +62,24 @@ EXCLUDES=(
   --exclude='*.md'
   --exclude='tests/'
   --exclude='.pre-commit-config.yaml'
-  --exclude='.venv/'
   --exclude='scripts/setup/'
 )
-
 sudo rsync -a --delete "${EXCLUDES[@]}" "$REPO_DIR/" "$WORKSPACE_DIR/"
 sudo chown -R "$USER:$USER" "$WORKSPACE_DIR"
 
+# -- Copy helper scripts --
+echo "[Update VM] Copying helper scripts to workspace"
 
-echo "[Update] Updating virtual environment"
+for helper_script in "$REPO_DIR/scripts/"*.sh; do
+    # Skip scripts inside scripts/setup/
+    if [[ "$helper_script" != "$REPO_DIR/scripts/setup/"* ]]; then
+        cp "$helper_script" "$WORKSPACE_DIR/"
+    fi
+done
+
+chmod +x "$WORKSPACE_DIR/"*.sh
+
+echo "[Update VM] Updating virtual environment"
 cd "$WORKSPACE_DIR"
 if [ ! -d ".venv" ]; then
     echo "[!] No virtualenv found. Run setup_vm.sh first."
