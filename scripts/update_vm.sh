@@ -1,19 +1,42 @@
 #!/bin/bash
 set -e
 
-if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-    echo "Usage: $0 <repo_url> <branch> <workspace_dir>"
-    exit 1
+# -- Load environment variables --
+# Load from profile.d if not set
+if [ -z "$WORKSPACE_DIR" ] || [ -z "$REPO_URL" ] || [ -z "$BRANCH" ]; then
+    if [ -f "/etc/profile.d/trimet_pipeline_workspace.sh" ]; then
+        source /etc/profile.d/trimet_pipeline_workspace.sh
+    else
+        echo "[!] Environment variables not set and no profile.d file found. Exiting."
+        exit 1
+    fi
 fi
 
-REPO_URL=$1
-BRANCH=$2
-WORKSPACE_DIR=$3
+# Optional override for repo URL and branch to promote to config after update
+OVERRIDE_REPO_URL="$REPO_URL"
+OVERRIDE_BRANCH="$BRANCH"
+PROMOTE_OVERRIDE=false
+
+if [ ! -z "$1" ]; then
+    echo "[Override] Forcing REPO_URL to $1"
+    OVERRIDE_REPO_URL="$1"
+fi
+
+if [ ! -z "$2" ]; then
+    echo "[Override] Forcing BRANCH to $2"
+    OVERRIDE_BRANCH="$2"
+fi
+
+if [ "$3" == "--promote" ]; then
+    echo "[Override] Will promote override to config after update"
+    PROMOTE_OVERRIDE=true
+fi
+
 CLONES_DIR="$HOME/clones"
-REPO_NAME=$(basename "${REPO_URL%.git}")
+REPO_NAME=$(basename "${OVERRIDE_REPO_URL%.git}")
 REPO_DIR="$CLONES_DIR/$REPO_NAME"
 
-echo "[Update] Updating repo in $REPO_DIR"
+echo "[Update VM] Pulling latest code from $OVERRIDE_REPO_URL ($OVERRIDE_BRANCH branch)"
 
 if [ ! -d "$REPO_DIR/.git" ]; then
     echo "[!] Repo not cloned. Run setup_vm.sh first."
@@ -22,11 +45,11 @@ fi
 
 cd "$REPO_DIR"
 git fetch origin
-if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null; then
-    git checkout "$BRANCH"
-    git pull origin "$BRANCH"
+if git ls-remote --exit-code --heads origin "$OVERRIDE_BRANCH" >/dev/null; then
+    git checkout "$OVERRIDE_BRANCH"
+    git pull origin "$OVERRIDE_BRANCH"
 else
-    echo "[!] Branch $BRANCH not found on origin. Exiting."
+    echo "[!] Branch $OVERRIDE_BRANCH not found on origin. Exiting."
     exit 1
 fi
 
@@ -39,10 +62,13 @@ EXCLUDES=(
   --exclude='*.md'
   --exclude='tests/'
   --exclude='.pre-commit-config.yaml'
+  --exclude='.venv/'
+  --exclude='scripts/setup/'
 )
 
 sudo rsync -a --delete "${EXCLUDES[@]}" "$REPO_DIR/" "$WORKSPACE_DIR/"
 sudo chown -R "$USER:$USER" "$WORKSPACE_DIR"
+
 
 echo "[Update] Updating virtual environment"
 cd "$WORKSPACE_DIR"
@@ -54,12 +80,37 @@ fi
 source .venv/bin/activate
 uv sync --no-dev
 
+echo "[Update VM] Saving updated environment fingerprint"
+cat pyproject.toml uv.lock 2>/dev/null | sha256sum | cut -d' ' -f1 > ENV_HASH.txt
+
+echo "[Update VM] Saving updated commit hash"
 cd "$REPO_DIR"
-cat pyproject.toml uv.lock 2>/dev/null | sha256sum | cut -d' ' -f1 > "$WORKSPACE_DIR/ENV_HASH.txt"
+CURRENT_COMMIT=$(git rev-parse HEAD)
+echo "$CURRENT_COMMIT" > "$WORKSPACE_DIR/COMMIT_HASH.txt"
+cd "$WORKSPACE_DIR"
 
 
-echo "[Update] Saving commit hash"
-cd "$REPO_DIR"
-git rev-parse HEAD > "$WORKSPACE_DIR/COMMIT_HASH.txt"
+# -- Promote Override if Requested --
+if [ "$PROMOTE_OVERRIDE" = true ]; then
+    echo "[Update VM] Promoting override to new permanent configuration"
 
-echo "Update complete."
+    CONFIG_FILE="$WORKSPACE_DIR/.vm_workspace_config"
+    echo "REPO_URL=$OVERRIDE_REPO_URL" > "$CONFIG_FILE"
+    echo "BRANCH=$OVERRIDE_BRANCH" >> "$CONFIG_FILE"
+    echo "WORKSPACE_DIR=$WORKSPACE_DIR" >> "$CONFIG_FILE"
+
+    echo "[Update VM] Writing global environment file to /etc/profile.d/trimet_pipeline_workspace.sh"
+
+    sudo tee /etc/profile.d/trimet_pipeline_workspace.sh > /dev/null <<EOF
+# Trimet Pipeline workspace environment
+export WORKSPACE_DIR="$WORKSPACE_DIR"
+export REPO_URL="$OVERRIDE_REPO_URL"
+export BRANCH="$OVERRIDE_BRANCH"
+EOF
+
+    sudo chmod 644 /etc/profile.d/trimet_pipeline_workspace.sh
+
+    echo "[Update VM] Promotion complete."
+fi
+
+echo "[Update VM] Update complete."

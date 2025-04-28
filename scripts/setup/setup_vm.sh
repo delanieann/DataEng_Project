@@ -103,15 +103,15 @@ if [ ! -d ".venv" ]; then
     uv venv
 else
     echo "[*] Reusing existing .venv and syncing dependencies..."
-    uv sync --no-dev
 fi
-
-# Save environment fingerprint
-cd "$REPO_DIR"
-cat pyproject.toml uv.lock 2>/dev/null | sha256sum | cut -d' ' -f1 > "$WORKSPACE_DIR/ENV_HASH.txt"
+uv sync --no-dev
 
 echo "[*] Activating virtual environment..."
 source .venv/bin/activate
+
+# Save environment fingerprint
+echo "[VM Setup] Saving environment fingerprint"
+cat pyproject.toml uv.lock 2>/dev/null | sha256sum | cut -d' ' -f1 > ENV_HASH.txt
 
 echo "[VM Setup] Saving current commit hash"
 cd "$REPO_DIR"
@@ -132,6 +132,15 @@ BRANCH=$BRANCH
 WORKSPACE_DIR=$WORKSPACE_DIR
 EOF
 
+# Make workspace variables global for all users
+echo "[VM Setup] Creating /etc/profile.d/trimet_pipeline_workspace.sh for global environment variables"
+sudo tee /etc/profile.d/trimet_pipeline_workspace.sh > /dev/null <<EOF
+# Trimet Pipeline workspace environment
+$(cat "$CONFIG_FILE" | sed 's/^/export /')
+EOF
+sudo chmod 644 /etc/profile.d/trimet_pipeline_workspace.sh
+
+echo "[VM Setup] Global environment file created at /etc/profile.d/trimet_pipeline_workspace.sh"
 
 echo "Setup complete."
 echo "Workspace: $WORKSPACE_DIR"
@@ -139,6 +148,3 @@ echo "Virtual environment: $WORKSPACE_DIR/.venv"
 echo "Current commit hash: $CURRENT_COMMIT"
 echo "Branch: $BRANCH"
 echo "Repository URL: $REPO_URL"
-
-
-
