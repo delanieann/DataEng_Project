@@ -20,7 +20,7 @@ echo "[VM Setup]"
 echo "[VM Setup] Updating package list and installing git and curl"
 
 sudo apt-get update
-sudo apt-get install -y git curl
+sudo apt-get install -y git curl rsync
 
 echo "[VM Setup] Installing uv if needed"
 if ! command -v uv >/dev/null 2>&1; then
@@ -71,11 +71,14 @@ if [ -d "$REPO_DIR/.git" ]; then
     echo "[*] Pulling latest changes from $BRANCH branch."
     git pull origin "$BRANCH"
 else
-    echo "Cloning repository into $REPO_DIR."
+    echo "[*]Cloning repository into $REPO_DIR."
     git clone "$REPO_URL" "$REPO_DIR" || {
         echo "[ERROR] Failed to clone repository. Exiting."
         exit 1
     }
+    cd "$REPO_DIR"
+    git checkout "$BRANCH"
+    echo "[*] Cloned repository into $REPO_DIR and checked out branch $BRANCH."
 fi
 
 echo "[VM Setup] Creating workspace directory"
