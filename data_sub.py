@@ -33,18 +33,20 @@ def callback(message: pubsub_v1.subscriber.message.Message) -> None:
             return
         count += 1
         message_json = json.loads(message_data)
-        bus_id = message_json.get("VEHICLE_ID")
+        # bus_id = message_json.get("VEHICLE_ID")
         with open(f"{date}.json", "a") as file:
-            json.dump(message_json, file, indent=4)
+        # with open(f"2025-04-10.json", "a") as file:
+            file.write(json.dumps(message_json) + "\n") 
     message.ack()
 
 streaming_pull_future = subscriber.subscribe(subscription_path, callback=callback)
 
 with subscriber:
     try:
+        while True:
         # When `timeout` is not set, result() will block indefinitely,
         # unless an exception is encountered first.
-        streaming_pull_future.result(timeout=timeout)
+            streaming_pull_future.result(timeout=timeout)
     except TimeoutError:
         streaming_pull_future.cancel()  # Trigger the shutdown.
         streaming_pull_future.result()  # Block until the shutdown is complete.
