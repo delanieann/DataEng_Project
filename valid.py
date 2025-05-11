@@ -1,6 +1,5 @@
 import pandas as pd
 
-file = "2025-04-09_f4.json"
 
 def valid_and_trans(file):
     df = pd.read_json(file)
