@@ -4,6 +4,11 @@ import pandas as pd
 def valid_and_trans(messages):
     #df = pd.read_json(messages)
     #df = pd.DataFrame(messages)
+  
+    if messages.empty or messages.shape[1] == 0:
+        print("Warning: Received empty DataFrame (0, 0), skipping validation.")
+        return pd.DataFrame()
+    
     df = messages.copy()
     df = df.drop(columns=["EVENT_NO_STOP", "GPS_SATELLITES", "GPS_HDOP"])
 
@@ -12,6 +17,7 @@ def valid_and_trans(messages):
 
     # 2 Limit - ACT_TIME cannot be negative, time measurement
     df = df[df["ACT_TIME"] >= 0]
+
 
     # 3 Existence - TIMESTAMP column with date and time
     # Transform OPD_DATE and ACT_TIME to TIMESTAMP column
@@ -29,6 +35,7 @@ def valid_and_trans(messages):
     # 5 Referential Integerity - VEHICLE_ID must be within Team1's assignment
     bus = pd.read_csv("vehicleGroupsIds.csv")
     df = df[df["VEHICLE_ID"].isin(bus["Whisker"])]
+
 
     # Transform Meters and Timestamp into Speed column
     # 6 Intra-Record Validation - Speed is determined based on delta 
@@ -54,7 +61,6 @@ def valid_and_trans(messages):
     
     df = df.groupby(by="EVENT_NO_TRIP", group_keys=False).apply(trip_speed).reset_index(drop=True)
 
-
     # 8 Existence - Longitude exists
     df = df.dropna(subset=["GPS_LONGITUDE"])
 
@@ -68,6 +74,7 @@ def valid_and_trans(messages):
     # Reorganize columns for copy_from
     
     df = df[['TIMESTAMP', 'GPS_LATITUDE', 'GPS_LONGITUDE', 'SPEED', 'EVENT_NO_TRIP', 'VEHICLE_ID']]
+    
     return(df)
 
 
