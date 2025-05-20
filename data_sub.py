@@ -2,12 +2,14 @@ from concurrent.futures import TimeoutError
 from google.cloud import pubsub_v1
 from datetime import datetime, timedelta
 from valid import valid_and_trans
+from dotenv import load_dotenv
 
 import threading
 import json
 import psycopg2
 import io
 import pandas as pd
+import os
 
 timestamp = datetime.now()
 formatted_timestamp = timestamp.strftime('%Y-%m-%d_%H:%M:%S')
@@ -43,8 +45,6 @@ def callback(message: pubsub_v1.subscriber.message.Message) -> None:
         count += 1
         message_json = json.loads(message_data)
         messages.append(message_json)
-        #with open(f"{date}.json", "a") as file:
-        #    file.write(json.dumps(message_json) + "\n") 
     message.ack()
 
 def db_connect():
@@ -52,7 +52,7 @@ def db_connect():
         host="localhost",
         database="postgres",
         user="postgres",
-        password="postgres",
+        password=os.environ.get("PASSWORD"),
     )
     connection.autocommit = True
     return connection
@@ -60,22 +60,15 @@ def db_connect():
 def load(conn, df):
 
     trip = df[['EVENT_NO_TRIP', 'VEHICLE_ID']].drop_duplicates(subset='EVENT_NO_TRIP')
+    trip.rename(columns={'EVENT_NO_TRIP': 'trip_id', 'VEHICLE_ID': 'vehicle_id'}, inplace=True)
     bc = df[['TIMESTAMP', 'GPS_LATITUDE', 'GPS_LONGITUDE', 'SPEED', 'EVENT_NO_TRIP']]
     with conn.cursor() as cursor:
         try:
-            
-            # use sql insert to insert into trip table
-            for _, row in trip.iterrows():
-                trip_id = int(row['EVENT_NO_TRIP'])
-                vehicle_id = int(row['VEHICLE_ID'])
-                cursor.execute(
-                    """
-                    INSERT INTO Trip (trip_id, vehicle_id) 
-                    VALUES (%s, %s) 
-                    ON CONFLICT (trip_id) DO NOTHING;
-                    """,
-                    (trip_id, vehicle_id))
-            # use copy_from to bulk insert into breadcrumb
+            csv_trip = trip.to_csv(index=False)
+            f_trip = io.StringIO(csv)
+            next(f_trip)
+            cursor.copy_from(f_trip, 'trip', sep=',', columns=['trip_id', 'vehicle_id'])
+
             csv = bc.to_csv(index=False)
             f = io.StringIO(csv)
             next(f)
@@ -89,14 +82,10 @@ def main():
     streaming_pull_future = subscriber.subscribe(subscription_path, callback=callback)
 
     with subscriber:
-        try:
-            while True:
+        while True:
         # When `timeout` is not set, result() will block indefinitely,
         # unless an exception is encountered first.
                 streaming_pull_future.result(timeout=timeout)
-        except TimeoutError:
-            streaming_pull_future.cancel()  # Trigger the shutdown.
-            streaming_pull_future.result()  # Block until the shutdown is complete.
 
     if count > 0:
         with open("sub_log.txt", "a") as file:
@@ -108,7 +97,11 @@ def main():
     
     #Connect to db and put in db
     conn = db_connect()
-    load(conn, df)
+    if df.empty:
+        with open("db_err.txt", "a") as file:
+            file.write("Empty dataframe.")
+    else:
+        load(conn, df)
 
 if __name__ == "__main__":
     main()
