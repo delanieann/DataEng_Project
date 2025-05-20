@@ -153,4 +153,4 @@ def valid_and_trans(messages):
     df = latitude(df)
     avg_speed(df)
     df = column_organization(df)
-
+    return df
