@@ -11,41 +11,39 @@ import io
 import pandas as pd
 import os
 
+BATCH_SIZE = 50000
+load_dotenv()
 timestamp = datetime.now()
 formatted_timestamp = timestamp.strftime('%Y-%m-%d_%H:%M:%S')
 date = timestamp.strftime('%Y-%m-%d')
 
 project_id = "data-eng-456118"
 subscription_id = "bus_breadcrumb-sub"
-# Number of seconds the subscriber should listen for messages
-timeout = 600.0
 
 lock = threading.Lock()
 
-count = 0
-
 messages = []
+count = 0
 
 subscriber = pubsub_v1.SubscriberClient()
 subscription_path = subscriber.subscription_path(project_id, subscription_id)
 
 def callback(message: pubsub_v1.subscriber.message.Message) -> None:
-    #global date
-    global messages
+    global messages, count, formatted_timestamp
     with lock:
-        global count
-        global formatted_timestamp
         message_data = message.data.decode("utf-8")
         
         if not message_data.strip().startswith("{"):
             with open("sub_err.txt", "a") as file:
-                write(f"{formatted_timestamp} skipping non-JSON message: {repr(message_data)}")
+                file.write(f"{formatted_timestamp} skipping non-JSON message: {repr(message_data)}")
             message.ack()
             return
+        
         count += 1
         message_json = json.loads(message_data)
         messages.append(message_json)
     message.ack()
+
 
 def db_connect():
     connection = psycopg2.connect(
@@ -58,14 +56,19 @@ def db_connect():
     return connection
 
 def load(conn, df):
-
-    trip = df[['EVENT_NO_TRIP', 'VEHICLE_ID']].drop_duplicates(subset='EVENT_NO_TRIP')
+    bc = df[['TIMESTAMP', 'GPS_LATITUDE', 
+                 'GPS_LONGITUDE', 'SPEED', 
+                 'EVENT_NO_TRIP']]
+    
+    trip = df[['EVENT_NO_TRIP', 
+                   'VEHICLE_ID']].drop_duplicates(subset='EVENT_NO_TRIP')
+    
     trip.rename(columns={'EVENT_NO_TRIP': 'trip_id', 'VEHICLE_ID': 'vehicle_id'}, inplace=True)
-    bc = df[['TIMESTAMP', 'GPS_LATITUDE', 'GPS_LONGITUDE', 'SPEED', 'EVENT_NO_TRIP']]
+        
     with conn.cursor() as cursor:
         try:
             csv_trip = trip.to_csv(index=False)
-            f_trip = io.StringIO(csv)
+            f_trip = io.StringIO(csv_trip)
             next(f_trip)
             cursor.copy_from(f_trip, 'trip', sep=',', columns=['trip_id', 'vehicle_id'])
 
@@ -75,32 +78,29 @@ def load(conn, df):
             cursor.copy_from(f, 'breadcrumb', sep=',', null='\\N')
         except Exception as e:
             with open("db_err.txt", "a") as file:
-                file.write(f"Error during data load: {e}")
+                file.write(f"{datetime.now()} - Error during data load: {e}\n")
 
 
 def main():
-    streaming_pull_future = subscriber.subscribe(subscription_path, callback=callback)
-
-    with subscriber:
-        while True:
-        # When `timeout` is not set, result() will block indefinitely,
-        # unless an exception is encountered first.
-                streaming_pull_future.result(timeout=timeout)
-
-    if count > 0:
-        with open("sub_log.txt", "a") as file:
-            file.write(f"{formatted_timestamp} Message count: {count}\n")
-
-    #Validate next
-    unfiltered = pd.DataFrame(messages)
-    df = valid_and_trans(unfiltered)
     
-    #Connect to db and put in db
-    conn = db_connect()
-    if df.empty:
-        with open("db_err.txt", "a") as file:
-            file.write("Empty dataframe.")
-    else:
+    while True:
+        streaming_pull_future = subscriber.subscribe(subscription_path, callback=callback)
+        try:
+            streaming_pull_future.result(1500)
+        except TimeoutError as e:
+            streaming_pull_future.cancel()  # Trigger the shutdown.
+            streaming_pull_future.result()  # Block until the shutdown is complete.
+    
+        if count > 0:
+            with open("sub_log.txt", "a") as file:
+                file.write(f"{formatted_timestamp} Message count: {count}\n")
+
+        #Validate next
+        unfiltered = pd.DataFrame(messages)
+        df = valid_and_trans(unfiltered)
+    
+        #Connect to db and put in db
+        conn = db_connect()
         load(conn, df)
 
 if __name__ == "__main__":

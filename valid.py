@@ -2,7 +2,7 @@ import pandas as pd
 
 def write_error(e):
     with open("validation_err.txt", "a") as file:
-        file.write(e)
+        file.write(str(e) + "\n")
 
 def empty_df(df):
     try:
@@ -14,8 +14,7 @@ def empty_df(df):
 def drop_cols(df):
     try:
         df = df.drop(columns=["EVENT_NO_STOP", "GPS_SATELLITES", "GPS_HDOP"])
-        required_cols =  {"OPD_DATE", "ACT_TIME", "GPS_LATITUDE", 
-                          "GPS_LONGITUDE", "SPEED", "EVENT_NO_TRIP"}
+        required_cols =  {'EVENT_NO_TRIP', 'GPS_LATITUDE', 'METERS', 'ACT_TIME', 'VEHICLE_ID', 'GPS_LONGITUDE', 'OPD_DATE'}
         assert required_cols.issubset(df.columns), f"Columns present: {set(df.columns)}"
     except AssertionError as e:
         write_error(e)
@@ -129,9 +128,9 @@ def avg_speed(df):
 def column_organization(df):
     # Reorganize columns for copy_from
     try:
-        expected_cols = ['TIMESTAMP', 'GPS_LATITUDE', 'GPS_LONGITUDE', 'SPEED', 'EVENT_NO_TRIP', 'VEHICLE_ID']
-        df = df[expected_cols]
-        assert expected_cols.issubset(df.columns), f"Columns present: {set(df.columns)}"
+        expected_cols = {'TIMESTAMP', 'GPS_LATITUDE', 'GPS_LONGITUDE', 'SPEED', 'EVENT_NO_TRIP', 'VEHICLE_ID'}
+        df = df[['TIMESTAMP', 'GPS_LATITUDE', 'GPS_LONGITUDE', 'SPEED', 'EVENT_NO_TRIP', 'VEHICLE_ID']]
+        assert expected_cols.issubset(df.columns), f"Columns present: {expected_cols - set(df.columns)}"
     except AssertionError as e:
         write_error(e)
     return(df)
@@ -141,7 +140,7 @@ def valid_and_trans(messages):
     #check for empty df
     empty_df(messages)
     df = messages.copy()
-
+    
     df = drop_cols(df)      
     df = neg_meters(df)
     df = neg_time(df)
@@ -153,4 +152,5 @@ def valid_and_trans(messages):
     df = latitude(df)
     avg_speed(df)
     df = column_organization(df)
+
     return df
