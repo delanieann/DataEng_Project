@@ -31,8 +31,6 @@ final_schema = pa.DataFrameSchema(
 )
 
 
-@pa.check_input(raw_schema, lazy=True)
-@pa.check_output(final_schema, lazy=True)
 def replace_direction(df: pd.DataFrame) -> pd.DataFrame:
     direction_map = {
         0: "Out",
@@ -40,8 +38,6 @@ def replace_direction(df: pd.DataFrame) -> pd.DataFrame:
     }
     return df.replace({"direction": direction_map})
 
-@pa.check_input(raw_schema, lazy=True)
-@pa.check_output(final_schema, lazy=True)
 def replace_service_key(df: pd.DataFrame) -> pd.DataFrame:
     service_key_map = {
         "W": "Weekday",
@@ -51,8 +47,6 @@ def replace_service_key(df: pd.DataFrame) -> pd.DataFrame:
     return df.replace({"service_key": service_key_map})
 
 
-@pa.check_input(raw_schema, lazy=True)
-@pa.check_output(final_schema, lazy=True)
 def rename_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(
         columns={
@@ -62,5 +56,17 @@ def rename_columns(df: pd.DataFrame) -> pd.DataFrame:
             "service_key": "service_key",
             "direction": "direction",
         }
-        inplace=True,
     )
+
+@pa.check_input(raw_schema)
+@pa.check_output(final_schema)
+def run_transforms(df: pd.DataFrame) -> pd.DataFrame:
+    try:
+        df = replace_direction(df)
+        df = replace_service_key(df)
+        df = rename_columns(df)
+    except Exception as e:
+        # handle the exception write_error? or use logging module
+        print(f"An error occurred: {e}")
+        raise
+    return df
